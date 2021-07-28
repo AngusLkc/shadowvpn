@@ -1,5 +1,4 @@
-lib_LTLIBRARIES = \
-	libsodium.la
+lib_LTLIBRARIES = libsodium.la
 
 libsodium_la_SOURCES = \
 	crypto_aead/chacha20poly1305/sodium/aead_chacha20poly1305.c \
@@ -156,9 +155,7 @@ libsodium_la_SOURCES = \
 	sodium/version.c
 
 if !EMSCRIPTEN
-libsodium_la_SOURCES += \
-	randombytes/salsa20/randombytes_salsa20_random.c \
-	randombytes/sysrandom/randombytes_sysrandom.c
+libsodium_la_SOURCES += randombytes/salsa20/randombytes_salsa20_random.c randombytes/sysrandom/randombytes_sysrandom.c
 endif
 
 if HAVE_TI_MODE
@@ -189,14 +186,9 @@ libsodium_la_SOURCES += \
 endif
 
 if HAVE_AMD64_ASM
-libsodium_la_SOURCES += \
-	crypto_stream/salsa20/amd64_xmm6/api.h \
-	crypto_stream/salsa20/amd64_xmm6/stream_salsa20_amd64_xmm6.S
+libsodium_la_SOURCES += crypto_stream/salsa20/amd64_xmm6/api.h crypto_stream/salsa20/amd64_xmm6/stream_salsa20_amd64_xmm6.S
 else
-libsodium_la_SOURCES += \
-	crypto_stream/salsa20/ref/api.h \
-	crypto_stream/salsa20/ref/stream_salsa20_ref.c \
-	crypto_stream/salsa20/ref/xor_salsa20_ref.c
+libsodium_la_SOURCES += crypto_stream/salsa20/ref/api.h crypto_stream/salsa20/ref/stream_salsa20_ref.c crypto_stream/salsa20/ref/xor_salsa20_ref.c
 endif
 
 if !MINIMAL
@@ -239,16 +231,9 @@ libsodium_la_SOURCES += \
 	crypto_stream/salsa208/ref/xor_salsa208.c
 endif
 
-libsodium_la_LDFLAGS = \
-	$(AM_LDFLAGS) \
-	-export-dynamic \
-	-no-undefined \
-	$(LIBTOOL_EXTRA_FLAGS)
+libsodium_la_LDFLAGS = $(AM_LDFLAGS) -export-dynamic -no-undefined $(LIBTOOL_EXTRA_FLAGS)
 
-libsodium_la_CPPFLAGS = \
-	$(LTDLINCL) \
-	-I$(srcdir)/include/sodium \
-	-I$(builddir)/include/sodium
+libsodium_la_CPPFLAGS = $(LTDLINCL) -I$(srcdir)/include/sodium -I$(builddir)/include/sodium
 
 if HAVE_LD_OUTPUT_DEF
 libsodium_la_LDFLAGS += -Wl,--output-def,libsodium-$(DLL_VERSION).def
@@ -258,5 +243,4 @@ CLEANFILES = $(defexec_DATA)
 libsodium-$(DLL_VERSION).def: libsodium.la
 endif
 
-SUBDIRS = \
-	include
+SUBDIRS = include

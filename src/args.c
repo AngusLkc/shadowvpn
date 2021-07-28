@@ -1,23 +1,3 @@
-/**
-  args.c
-
-  Copyright (C) 2015 clowwindy
-
-  This program is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-*/
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -25,12 +5,9 @@
 
 #include "shadowvpn.h"
 
-#ifndef TARGET_WIN32
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#endif
-
 
 static const char *help_message =
 "usage: shadowvpn -c config_file [-s start/stop/restart] [-v]\n"
@@ -40,15 +17,11 @@ static const char *help_message =
 "                        in foreground\n"
 "  -c config_file        path to config file\n"
 "  -v                    verbose logging\n"
-"\n"
-"Online help: <https://github.com/clowwindy/ShadowVPN>\n";
+"\n";
 
 static void print_help() __attribute__ ((noreturn));
-
 static void load_default_args(shadowvpn_args_t *args);
-
-static int process_key_value(shadowvpn_args_t *args, const char *key,
-                      const char *value);
+static int process_key_value(shadowvpn_args_t *args, const char *key, const char *value);
 
 static void print_help() {
   printf("%s", help_message);
@@ -61,7 +34,6 @@ static int parse_config_file(shadowvpn_args_t *args, const char *filename) {
   FILE *fp;
   size_t len = sizeof(buf);
   int lineno = 0;
-
   fp = fopen(filename, "rb");
   if (fp == NULL) {
     err("fopen");
@@ -90,11 +62,9 @@ static int parse_config_file(shadowvpn_args_t *args, const char *filename) {
     }
     *sp_pos = 0;
     sp_pos++;
-    // line points to key and sp_pos points to value
     if (0 != process_key_value(args, line, sp_pos))
       return 1;
   }
-  // check if every required arg is set
   if (!args->mode) {
     errf("mode not set in config file");
     return -1;
@@ -111,12 +81,6 @@ static int parse_config_file(shadowvpn_args_t *args, const char *filename) {
     errf("password not set in config file");
     return -1;
   }
-#ifdef TARGET_WIN32
-  if (!args->tun_ip) {
-    errf("tunip not set in config file");
-    return -1;
-  }
-#endif
   return 0;
 }
 
@@ -168,11 +132,8 @@ static int parse_user_tokens(shadowvpn_args_t *args, char *value) {
   return 0;
 }
 
-static int process_key_value(shadowvpn_args_t *args, const char *key,
-                      const char *value) {
+static int process_key_value(shadowvpn_args_t *args, const char *key, const char *value) {
   if (strcmp("password", key) != 0) {
-    // set environment variables so that up/down script can
-    // make use of these values
     if (-1 == setenv(key, value, 1)) {
       err("setenv");
       return -1;
@@ -183,8 +144,7 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
   } else if (strcmp("port", key) == 0) {
     args->port = atol(value);
   } else if (strcmp("concurrency", key) == 0) {
-    errf("warning: concurrency is temporarily disabled on this version, "
-         "make sure to set concurrency=1 on the other side");
+    errf("warning: concurrency is temporarily disabled on this version, make sure to set concurrency=1 on the other side");
     args->concurrency = atol(value);
     if (args->concurrency == 0) {
       errf("concurrency should >= 1");
@@ -199,7 +159,6 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
   } else if (strcmp("user_token", key) == 0) {
     parse_user_tokens(args, strdup(value));
   }
-#ifndef TARGET_WIN32
   else if (strcmp("net", key) == 0) {
     char *p = strchr(value, '/');
     if (p) *p = 0;
@@ -209,7 +168,6 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
     }
     args->netip = ntohl((uint32_t)addr);
   }
-#endif
   else if (strcmp("mode", key) == 0) {
     if (strcmp("server", value) == 0) {
       args->mode = SHADOWVPN_MODE_SERVER;
@@ -221,8 +179,6 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
     }
   } else if (strcmp("mtu", key) == 0) {
     long mtu = atol(value);
-    // RFC 791
-    // in order to wrap packet of length 68, MTU should be > 68 + overhead
     if (mtu < 68 + SHADOWVPN_OVERHEAD_LEN) {
       errf("MTU %ld is too small", mtu);
       return -1;
@@ -243,36 +199,18 @@ static int process_key_value(shadowvpn_args_t *args, const char *key,
   } else if (strcmp("down", key) == 0) {
     args->down_script = strdup(value);
   }
-#ifdef TARGET_WIN32
-  else if (strcmp("tunip", key) == 0) {
-    args->tun_ip = strdup(value);
-  } else if (strcmp("tunmask", key) == 0) {
-    args->tun_mask = (int) atol(value);
-  } else if (strcmp("tunport", key) == 0) {
-    args->tun_port = (int) atol(value);
-  }
-#endif
   else {
-    errf("warning: config key %s not recognized by shadowvpn, will be "
-         "passed to shell scripts anyway", key);
+    errf("warning: config key %s not recognized by shadowvpn, will be passed to shell scripts anyway", key);
   }
   return 0;
 }
 
 static void load_default_args(shadowvpn_args_t *args) {
-#ifdef TARGET_DARWIN
-  args->intf = "utun0";
-#else
   args->intf = "tun0";
-#endif
   args->mtu = 1440;
   args->pid_file = "/var/run/shadowvpn.pid";
   args->log_file = "/var/log/shadowvpn.log";
   args->concurrency = 1;
-#ifdef TARGET_WIN32
-  args->tun_mask = 24;
-  args->tun_port = TUN_DELEGATE_PORT;
-#endif
 }
 
 int args_parse(shadowvpn_args_t *args, int argc, char **argv) {

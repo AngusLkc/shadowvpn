@@ -1,3 +1,1 @@
-
-SUBDIRS = \
-	libsodium
+SUBDIRS = libsodium

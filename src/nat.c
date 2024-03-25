@@ -116,7 +116,7 @@ int nat_fix_upstream(nat_ctx_t *ctx, unsigned char *buf, size_t buflen, const st
   //计算32位地址差值并重新计算校验和
   acc = client->input_tun_ip - iphdr->saddr;//源地址转换校验和差值=skb原来的地址-skb替换后地址
   ADJUST_CHECKSUM(acc, iphdr->checksum);
-  //还需要对未分片或第一个分片重新计算TCP/UDP校验和
+  //如果未分片或是第一个分片,需要更新TCP/UDP校验和
   if (0 == (iphdr->frag & htons(0x1fff))) {
     void *ip_payload = buf + SHADOWVPN_USERTOKEN_LEN + iphdr_len;
     if (iphdr->proto == IPPROTO_TCP) {
@@ -170,7 +170,7 @@ int nat_fix_downstream(nat_ctx_t *ctx, unsigned char *buf, size_t buflen, struct
   acc = iphdr->daddr - client->input_tun_ip;//目标地址转换校验和差值=skb原来的地址-skb替换后地址
   iphdr->daddr = client->input_tun_ip;
   ADJUST_CHECKSUM(acc, iphdr->checksum);
-  //如果是第一个分片,还需重新计算TCP和UDP校验和
+  //如果未分片或是第一个分片,需要更新TCP/UDP校验和
   if (0 == (iphdr->frag & htons(0x1fff))) {
     void *ip_payload = buf + SHADOWVPN_USERTOKEN_LEN + iphdr_len;
     if (iphdr->proto == IPPROTO_TCP) {
